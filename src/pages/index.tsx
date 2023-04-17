@@ -1,124 +1,209 @@
-import Image from 'next/image'
-import { Inter } from 'next/font/google'
+import { createNonce } from "@/services/nonce";
+import absoluteUrl from "next-absolute-url";
+import { GetServerSideProps } from "next";
+import { QRCodeSVG } from "qrcode.react";
+import { useEffect, useReducer, useState } from "react";
+import dayjs from "dayjs";
+import { Claim, SignedClaim } from "@/services/types";
+import { claimLifetime } from "@/services/constants";
+import { isSigned } from "@/services/verify";
+import { Verified } from "@/components/Verified";
+// import { gates } from "@/services/config";
 
-const inter = Inter({ subsets: ['latin'] })
+interface Props {
+  endpoint: string;
+  nonce: string;
+}
 
-export default function Home() {
+interface ClaimReducerState {
+  claim?: Claim | SignedClaim;
+  claimSecondsRemaining?: number;
+  last: SignedClaim[];
+}
+
+type ClaimReducerAction =
+  | { type: "claimed"; claim: Claim }
+  | { type: "passed"; claim: SignedClaim; passedAt: string }
+  | { type: "invalid" }
+  | { type: "expired" }
+  | { type: "reset" };
+
+function claimReducer(
+  state: ClaimReducerState,
+  action: ClaimReducerAction
+): ClaimReducerState {
+  switch (action.type) {
+    case "claimed": {
+      if (!state.claim || state.claim.nonce !== action.claim.nonce) {
+        console.log(action.type, state);
+        return {
+          ...state,
+          claim: action.claim,
+          claimSecondsRemaining: secondsRemaining(action.claim.createdAt),
+        };
+      }
+
+      return {
+        ...state,
+        claimSecondsRemaining: secondsRemaining(state.claim.createdAt),
+      };
+    }
+    case "passed": {
+      console.log(action.type, state);
+      return { last: [action.claim, ...state.last].slice(0, 5) };
+    }
+    case "reset":
+    case "expired":
+    case "invalid": {
+      if (state.claim) console.log(action.type, state);
+      return state.claim ? { last: state.last } : state;
+    }
+  }
+
+  function secondsRemaining(createdAt: string) {
+    return Math.floor(
+      Math.max(0, dayjs(createdAt).diff() + claimLifetime) / 1000
+    );
+  }
+}
+
+export default function Kiosk({
+  endpoint: initialEndpoint,
+  nonce: initialNonce,
+}: Props) {
+  const [nonce, setNonce] = useState(initialNonce);
+  const [endpoint, setEndpoint] = useState(initialEndpoint);
+
+  const [state, dispatch] = useReducer(claimReducer, { last: [] });
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      fetch("/api/verify", { method: "POST", body: JSON.stringify({ nonce }) })
+        .then((response) =>
+          response.json().then((data) => ({
+            data,
+            ok: response.ok,
+            status: response.status,
+          }))
+        )
+        .then(({ data, ok }) => {
+          if (!ok) return;
+
+          const { claim, expired, passedAt } = data as {
+            claim?: Claim | SignedClaim;
+            expired?: boolean;
+            passedAt?: string;
+          };
+
+          if (claim) {
+            if (expired) {
+              dispatch({ type: "expired" });
+              handleGenerateNewCode();
+            } else {
+              if (isSigned(claim)) {
+                if (passedAt) {
+                  dispatch({ type: "passed", claim, passedAt });
+                  handleGenerateNewCode();
+                } else {
+                  dispatch({ type: "invalid" });
+                  handleGenerateNewCode();
+                }
+              } else {
+                dispatch({ type: "claimed", claim });
+              }
+            }
+          } else {
+            dispatch({ type: "reset" });
+          }
+        })
+        .catch((error) => {
+          console.log("verify error", error);
+        });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [nonce]);
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">src/pages/index.tsx</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{' '}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
+    <main className="flex flex-col h-screen w-screen">
+      <section id="header" className="w-full h-16 bg-stone-900">
+        <div className="navbar">
+          <div className="navbar-start" />
+          <div className="navbar-center">
+            {state.claimSecondsRemaining != null ? (
+              <div className="flex items-center gap-2">
+                <p>Claimed for</p>
+                <span className="countdown font-mono text-4xl">
+                  <span
+                    style={
+                      {
+                        "--value": state.claimSecondsRemaining,
+                      } as React.CSSProperties
+                    }
+                  />
+                </span>
+                sec
+              </div>
+            ) : (
+              <p>Unclaimed</p>
+            )}
+          </div>
+          <div className="navbar-end" />
         </div>
-      </div>
-
-      <div className="relative flex place-items-center before:absolute before:h-[300px] before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700/10 after:dark:from-sky-900 after:dark:via-[#0141ff]/40 before:lg:h-[360px]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
-
-      <div className="mb-32 grid text-center lg:mb-0 lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`${inter.className} mb-3 text-2xl font-semibold`}>
-            Docs{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p
-            className={`${inter.className} m-0 max-w-[30ch] text-sm opacity-50`}
-          >
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`${inter.className} mb-3 text-2xl font-semibold`}>
-            Learn{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p
-            className={`${inter.className} m-0 max-w-[30ch] text-sm opacity-50`}
-          >
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`${inter.className} mb-3 text-2xl font-semibold`}>
-            Templates{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p
-            className={`${inter.className} m-0 max-w-[30ch] text-sm opacity-50`}
-          >
-            Discover and deploy boilerplate example Next.js&nbsp;projects.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`${inter.className} mb-3 text-2xl font-semibold`}>
-            Deploy{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p
-            className={`${inter.className} m-0 max-w-[30ch] text-sm opacity-50`}
-          >
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
+      </section>
+      <section
+        id="content"
+        className="flex-1 flex flex-col items-center justify-center h-full"
+      >
+        <div className={`p-4 min-w-[425px] ${state.claim ? "bg-success" : ""}`}>
+          <div className="font-mono text-center text-secondary p-2">
+            <a href={endpoint}>{nonce}</a>
+          </div>
+          <QRCodeSVG
+            className={state.claimSecondsRemaining != null ? "blur-md" : ""}
+            {...({ size: null } as any)}
+            value={endpoint}
+            onClick={handleGenerateNewCode}
+          />
+        </div>
+      </section>
+      <section id="footer" className="w-full h-72 bg-stone-900 overflow-auto">
+        <div className="navbar h-full">
+          <div className="navbar-start" />
+          <div className="navbar-center">
+            <div className="flex gap-2">
+              {state.last.map((claim) => (
+                <Verified key={claim.nonce} claim={claim} />
+              ))}
+            </div>
+          </div>
+          <div className="navbar-end" />
+        </div>
+      </section>
     </main>
-  )
+  );
+
+  function handleGenerateNewCode() {
+    const nonce = createNonce();
+    const { origin } = window.location;
+    const endpoint = createEndpoint(origin, nonce);
+
+    setNonce(nonce);
+    setEndpoint(endpoint);
+    dispatch({ type: "reset" });
+  }
+}
+
+export const getServerSideProps = (({ req, query }) => {
+  const nonce = createNonce();
+  const { origin } = absoluteUrl(req, "localhost:3000");
+  const endpoint = createEndpoint(origin, nonce);
+
+  return Promise.resolve({
+    props: { endpoint, nonce },
+  });
+}) satisfies GetServerSideProps<Props>;
+
+function createEndpoint(origin: string, nonce: string) {
+  return `${origin}/verify?nonce=${nonce}`;
 }
