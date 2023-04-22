@@ -3,6 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "subgraph:init": "rm -rf subgraph && graph init ERC721 subgraph --protocol ethereum --studio --contract-name ERC721 --from-contract 0x462de990b5ba39ffbe37bfb6954f7afc67c7b487 --start-block 17034740 --abi ./node_modules/@openzeppelin/contracts/build/contracts/ERC721.json --network mainnet && rm -rf subgraph/{.git,node_modules,package.json,yarn.lock}",
+    "subgraph:codegen": "cd subgraph && graph codegen",
+    "subgraph:build": "cd subgraph && graph build",
+    "subgraph:deploy": "cd subgraph && graph deploy --node https://api.studio.thegraph.com/deploy/ token-owners",
+    "subgraph:create-local": "cd subgraph && graph create --node http://localhost:8020/ token-owners",
+    "subgraph:remove-local": "cd subgraph && graph remove --node http://localhost:8020/ token-owners",
+    "subgraph:deploy-local": "cd subgraph && graph deploy --node http://localhost:8020/ --ipfs http://localhost:5001 token-owners",
+    "subgraph:test": "cd subgraph && graph test",
     "format": "prettier -w .",
     "dev": "next dev",
     "build": "next build",
@@ -25,6 +33,9 @@
     "wagmi": "^0.12.10"
   },
   "devDependencies": {
+    "@graphprotocol/graph-cli": "0.47.1",
+    "@graphprotocol/graph-ts": "0.29.1",
+    "@openzeppelin/contracts": "^4.8.3",
     "@types/node": "^18.15.11",
     "@types/react": "^18.0.35",
     "@types/react-blockies": "^1.4.1",
@@ -32,6 +43,7 @@
     "autoprefixer": "^10.4.14",
     "eslint": "^8.38.0",
     "eslint-config-next": "^13.3.0",
+    "matchstick-as": "0.5.0",
     "postcss": "^8.4.22",
     "prettier": "^2.8.7",
     "typescript": "^5.0.4"
