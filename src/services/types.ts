@@ -20,5 +20,6 @@ export interface GateRequirement {
 }
 
 export interface Gate {
+  name: string;
   requirements: GateRequirement[];
 }

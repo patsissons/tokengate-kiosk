@@ -1,0 +1,26 @@
+query OwnerQuery($id: ID!) {
+  owner(id: $id) {
+    id
+    tokens {
+      id
+      uri
+      contract {
+        id
+        name
+        symbol
+        createdBlock
+        createdAt
+        updatedBlock
+        updatedAt
+      }
+      createdBlock
+      createdAt
+      updatedBlock
+      updatedAt
+    }
+    createdBlock
+    createdAt
+    updatedBlock
+    updatedAt
+  }
+}

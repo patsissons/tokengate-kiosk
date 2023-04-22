@@ -1,3 +1,5 @@
+import dayjs from "dayjs";
+import { NextApiHandler } from "next";
 import { errors, errorStatus, isApiMethod } from "@/services/errors";
 import {
   isClaimed,
@@ -6,8 +8,6 @@ import {
   isSigned,
   isValidNonce,
 } from "@/services/verify";
-import dayjs from "dayjs";
-import { NextApiHandler } from "next";
 
 const handler = (async (req, res) => {
   if (!isApiMethod(req, res, "POST")) return;
@@ -42,16 +42,16 @@ const handler = (async (req, res) => {
     return;
   }
 
-  const passedAt = isPassed(claim);
+  const { owner, passedAt } = await isPassed(claim);
 
-  if (!passedAt) {
+  if (!owner || !passedAt) {
     res.status(200).json({ nonce, claim });
     return;
   }
 
   res
     .status(200)
-    .json({ nonce, claim, passedAt: dayjs(passedAt).toISOString() });
+    .json({ nonce, claim, owner, passedAt: dayjs(passedAt).toISOString() });
 }) satisfies NextApiHandler;
 
 export default handler;

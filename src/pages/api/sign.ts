@@ -1,8 +1,10 @@
+import dayjs from "dayjs";
+import { NextApiHandler } from "next";
 import { verifySignature } from "@/services/sign";
 import { errors, errorStatus, isApiMethod } from "@/services/errors";
-import { NextApiHandler } from "next";
 import { readClaim, writeClaim } from "@/data/claims";
-import dayjs from "dayjs";
+import { isPassed } from "@/services/verify";
+import { SignedClaim } from "@/services/types";
 
 const handler = (async (req, res) => {
   if (!isApiMethod(req, res, "POST")) return;
@@ -41,14 +43,23 @@ const handler = (async (req, res) => {
     return;
   }
 
-  const signed = await writeClaim(req.socket, {
+  const signed: SignedClaim = {
     ...claim,
     wallet,
     signature,
     signedAt: dayjs().toISOString(),
-  });
+  };
 
-  res.status(200).json({ claim: signed });
+  await writeClaim(req.socket, signed);
+
+  const { owner, passedAt } = await isPassed(signed);
+  if (!owner || !passedAt) {
+    const error = errors.INVALID_WALLET;
+    res.status(errorStatus[error]).json({ error });
+    return;
+  }
+
+  res.status(200).json({ claim: signed, owner, passedAt });
 }) satisfies NextApiHandler;
 
 export default handler;

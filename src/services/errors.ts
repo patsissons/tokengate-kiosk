@@ -6,6 +6,7 @@ export const errors = {
   MISSING_SIGNATURE: "MISSING_SIGNATURE",
   INVALID_NONCE: "INVALID_NONCE",
   INVALID_SIGNATURE: "INVALID_SIGNATURE",
+  INVALID_WALLET: "INVALID_WALLET",
 } as const;
 
 export const errorStatus: Record<(typeof errors)[keyof typeof errors], number> =
@@ -18,6 +19,7 @@ export const errorStatus: Record<(typeof errors)[keyof typeof errors], number> =
 
     // 401: Unauthorized
     [errors.INVALID_SIGNATURE]: 401,
+    [errors.INVALID_WALLET]: 401,
   };
 
 export function isApiMethod(
