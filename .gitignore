@@ -35,4 +35,5 @@ yarn-error.log*
 next-env.d.ts
 
 # subgraph
+subgraph/build
 subgraph/generated
