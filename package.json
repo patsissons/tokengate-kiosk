@@ -2,8 +2,13 @@
   "name": "tokengate-kiosk",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "pnpm": "^10",
+    "node": "^22"
+  },
+  "packageManager": "pnpm@10.14.0",
   "scripts": {
-    "subgraph:init": "rm -rf subgraph && graph init ERC721 subgraph --protocol ethereum --studio --contract-name ERC721 --from-contract 0x462de990b5ba39ffbe37bfb6954f7afc67c7b487 --start-block 17034740 --abi ./node_modules/@openzeppelin/contracts/build/contracts/ERC721.json --network mainnet && rm -rf subgraph/{.git,node_modules,package.json,tests,yarn.lock}",
+    "subgraph:init": "rm -rf subgraph && graph init ERC721 subgraph --protocol ethereum --contract-name ERC721 --from-contract 0x462de990b5ba39ffbe37bfb6954f7afc67c7b487 --start-block 17034740 --abi ./node_modules/@openzeppelin/contracts/build/contracts/ERC721.json --network mainnet --skip-git && rm -rf subgraph/{.git,node_modules,package.json,tests,pnpm-lock.yaml}",
     "subgraph:codegen": "cd subgraph && graph codegen",
     "subgraph:build": "cd subgraph && graph build",
     "subgraph:auth": "cd subgraph && graph auth --studio",
@@ -34,7 +39,7 @@
     "wagmi": "^0.12.10"
   },
   "devDependencies": {
-    "@graphprotocol/graph-cli": "0.47.1",
+    "@graphprotocol/graph-cli": "^0.97.1",
     "@graphprotocol/graph-ts": "0.29.1",
     "@openzeppelin/contracts": "^4.8.3",
     "@types/node": "^18.15.11",

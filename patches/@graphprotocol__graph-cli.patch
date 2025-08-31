@@ -1,0 +1,26 @@
+diff --git a/dist/commands/init.js b/dist/commands/init.js
+index ce4444b42dc1d8521a469ab120100ae49771ec3a..1e5a516548b8e045df8faad2deaae3ee64de977f 100644
+--- a/dist/commands/init.js
++++ b/dist/commands/init.js
+@@ -134,16 +134,17 @@ export default class InitCommand extends Command {
+         // Detect Yarn and/or NPM
+         const yarn = system.which('yarn');
+         const npm = system.which('npm');
++        const pnpm = system.which('pnpm');
+         if (!yarn && !npm) {
+             this.error(`Neither Yarn nor NPM were found on your system. Please install one of them.`, {
+                 exit: 1,
+             });
+         }
+         const commands = {
+-            link: yarn ? 'yarn link @graphprotocol/graph-cli' : 'npm link @graphprotocol/graph-cli',
+-            install: yarn ? 'yarn' : 'npm install',
+-            codegen: yarn ? 'yarn codegen' : 'npm run codegen',
+-            deploy: yarn ? 'yarn deploy' : 'npm run deploy',
++            link: yarn && !pnpm ? 'yarn link @graphprotocol/graph-cli' : 'pnpm link @graphprotocol/graph-cli',
++            install: yarn && !pnpm ? 'yarn' : 'pnpm install',
++            codegen: yarn && !pnpm ? 'yarn codegen' : 'pnpm run codegen',
++            deploy: yarn && !pnpm ? 'yarn deploy' : 'pnpm run deploy',
+         };
+         // If all parameters are provided from the command-line,
+         // go straight to creating the subgraph from the example

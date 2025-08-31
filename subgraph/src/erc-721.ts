@@ -1,60 +1,64 @@
-import { ERC721, Transfer } from "../generated/ERC721/ERC721";
-import { Contract, Owner, OwnerContract, Token } from "../generated/schema";
+import { BigInt, Bytes } from "@graphprotocol/graph-ts"
+import {
+  ERC721,
+  Approval,
+  ApprovalForAll,
+  Transfer
+} from "../generated/ERC721/ERC721"
+import { ExampleEntity } from "../generated/schema"
 
-export function handleTransfer(event: Transfer): void {
-  const address = event.address;
-  const block = event.block;
-  const params = event.params;
-  const erc721 = ERC721.bind(address);
+export function handleApproval(event: Approval): void {
+  // Entities can be loaded from the store using an ID; this ID
+  // needs to be unique across all entities of the same type
+  const id = event.transaction.hash.concat(
+    Bytes.fromByteArray(Bytes.fromBigInt(event.logIndex))
+  )
+  let entity = ExampleEntity.load(id)
 
-  let contract = Contract.load(address.toHexString());
-  if (!contract) {
-    contract = new Contract(address.toHexString());
-    contract.name = erc721.name();
-    contract.symbol = erc721.symbol();
-    contract.createdBlock = block.number;
-    contract.createdAt = block.timestamp;
+  // Entities only exist after they have been saved to the store;
+  // `null` checks allow to create entities on demand
+  if (!entity) {
+    entity = new ExampleEntity(id)
+
+    // Entity fields can be set using simple assignments
+    entity.count = BigInt.fromI32(0)
   }
 
-  contract.updatedBlock = block.number;
-  contract.updatedAt = block.timestamp;
-  contract.save();
+  // BigInt and BigDecimal math are supported
+  entity.count = entity.count + BigInt.fromI32(1)
 
-  let owner = Owner.load(params.to.toHexString());
-  if (!owner) {
-    owner = new Owner(params.to.toHexString());
-    owner.createdBlock = block.number;
-    owner.createdAt = block.timestamp;
-  }
+  // Entity fields can be set based on event parameters
+  entity.owner = event.params.owner
+  entity.approved = event.params.approved
 
-  owner.updatedBlock = block.number;
-  owner.updatedAt = block.timestamp;
-  owner.save();
+  // Entities can be written to the store with `.save()`
+  entity.save()
 
-  let ownerContract = OwnerContract.load(owner.id + "-" + contract.id);
-  if (!ownerContract) {
-    ownerContract = new OwnerContract(owner.id + "-" + contract.id);
-    ownerContract.owner = owner.id;
-    ownerContract.contract = contract.id;
-    ownerContract.createdBlock = block.number;
-    ownerContract.createdAt = block.timestamp;
-  }
+  // Note: If a handler doesn't require existing field values, it is faster
+  // _not_ to load the entity from the store. Instead, create it fresh with
+  // `new Entity(...)`, set the fields that should be updated and save the
+  // entity back to the store. Fields that were not set or unset remain
+  // unchanged, allowing for partial updates to be applied.
 
-  ownerContract.updatedBlock = block.number;
-  ownerContract.updatedAt = block.timestamp;
-  ownerContract.save();
-
-  let token = Token.load(params.tokenId.toString());
-  if (!token) {
-    token = new Token(params.tokenId.toString());
-    token.contract = contract.id;
-    token.uri = erc721.tokenURI(params.tokenId);
-    token.createdBlock = block.number;
-    token.createdAt = block.timestamp;
-  }
-
-  token.updatedBlock = block.number;
-  token.updatedAt = block.timestamp;
-  token.owner = owner.id;
-  token.save();
+  // It is also possible to access smart contracts from mappings. For
+  // example, the contract that has emitted the event can be connected to
+  // with:
+  //
+  // let contract = Contract.bind(event.address)
+  //
+  // The following functions can then be called on this contract to access
+  // state variables and other data:
+  //
+  // - contract.balanceOf(...)
+  // - contract.getApproved(...)
+  // - contract.isApprovedForAll(...)
+  // - contract.name(...)
+  // - contract.ownerOf(...)
+  // - contract.supportsInterface(...)
+  // - contract.symbol(...)
+  // - contract.tokenURI(...)
 }
+
+export function handleApprovalForAll(event: ApprovalForAll): void {}
+
+export function handleTransfer(event: Transfer): void {}
