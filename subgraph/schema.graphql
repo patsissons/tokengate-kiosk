@@ -1,42 +1,6 @@
-type Contract @entity {
-  id: ID!
-  name: String!
-  symbol: String!
-  owners: [OwnerContract!]! @derivedFrom(field: "contract")
-  tokens: [Token!]! @derivedFrom(field: "contract")
-  createdBlock: BigInt!
-  createdAt: BigInt!
-  updatedBlock: BigInt!
-  updatedAt: BigInt!
-}
-
-type Token @entity {
-  id: ID!
-  uri: String!
-  contract: Contract!
-  owner: Owner!
-  createdBlock: BigInt!
-  createdAt: BigInt!
-  updatedBlock: BigInt!
-  updatedAt: BigInt!
-}
-
-type OwnerContract @entity {
-  id: ID!
-  owner: Owner!
-  contract: Contract!
-  createdBlock: BigInt!
-  createdAt: BigInt!
-  updatedBlock: BigInt!
-  updatedAt: BigInt!
-}
-
-type Owner @entity {
-  id: ID!
-  contracts: [OwnerContract!]! @derivedFrom(field: "owner")
-  tokens: [Token!]! @derivedFrom(field: "owner")
-  createdBlock: BigInt!
-  createdAt: BigInt!
-  updatedBlock: BigInt!
-  updatedAt: BigInt!
+type ExampleEntity @entity(immutable: true) {
+  id: Bytes!
+  count: BigInt!
+  owner: Bytes! # address
+  approved: Bytes! # address
 }

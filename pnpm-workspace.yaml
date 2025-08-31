@@ -1,0 +1,2 @@
+patchedDependencies:
+  '@graphprotocol/graph-cli': patches/@graphprotocol__graph-cli.patch

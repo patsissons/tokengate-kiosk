@@ -1,4 +1,6 @@
-specVersion: 0.0.5
+specVersion: 1.3.0
+indexerHints:
+  prune: auto
 schema:
   file: ./schema.graphql
 dataSources:
@@ -11,15 +13,20 @@ dataSources:
       startBlock: 17034740
     mapping:
       kind: ethereum/events
-      apiVersion: 0.0.7
+      apiVersion: 0.0.9
       language: wasm/assemblyscript
       entities:
-        - Token
-        - Owner
+        - Approval
+        - ApprovalForAll
+        - Transfer
       abis:
         - name: ERC721
           file: ./abis/ERC721.json
       eventHandlers:
+        - event: Approval(indexed address,indexed address,indexed uint256)
+          handler: handleApproval
+        - event: ApprovalForAll(indexed address,indexed address,bool)
+          handler: handleApprovalForAll
         - event: Transfer(indexed address,indexed address,indexed uint256)
           handler: handleTransfer
       file: ./src/erc-721.ts
